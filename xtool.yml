@@ -1,0 +1,4 @@
+version: 1
+bundleID: com.dev.app.2011
+product: X2011
+infoPath: Info.plist
