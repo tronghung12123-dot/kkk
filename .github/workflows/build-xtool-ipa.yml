@@ -1,0 +1,51 @@
+name: Build Unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app (swiftc, iphoneos SDK)
+        run: |
+          set -e
+          APP=X2011
+          BUNDLE_ID=com.dev.app.2011
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          mkdir -p build/Payload/$APP.app
+
+          xcrun swiftc \
+            -sdk "$SDK" \
+            -target arm64-apple-ios17.0 \
+            -parse-as-library -O \
+            -module-name $APP \
+            Sources/$APP/*.swift \
+            -o build/Payload/$APP.app/$APP
+
+          cp Info.plist build/Payload/$APP.app/Info.plist
+          P=build/Payload/$APP.app/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundleIdentifier string $BUNDLE_ID" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string $APP" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleName string $APP" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.0" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string 1" $P
+          /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string 17.0" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms array" $P
+          /usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string iPhoneOS" $P
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily array" $P
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:0 integer 1" $P
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:1 integer 2" $P
+
+          cd build
+          zip -qry $APP.ipa Payload
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: X2011-ipa
+          path: build/X2011.ipa
